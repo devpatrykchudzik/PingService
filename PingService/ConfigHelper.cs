@@ -46,10 +46,11 @@ namespace PingService
 
     public class ConfigModel
     {
-        public string WakingUrl { get; set; }
+        public string[] WakingUrls { get; set; }
         public DateTime WakingTimeParsed { get; set; }
         public string WakingTime { get; set; }
         public int TriesCount { get; set; }
+        public int WakingIntervalInMinutes { get; set; }
     }
 
 

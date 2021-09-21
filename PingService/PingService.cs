@@ -47,43 +47,44 @@ namespace PingService
 
             RequestApi();
 
-            var interval = DateTime.Now.Date.Add(ConfigHelper.Config.WakingTimeParsed.TimeOfDay) - DateTime.Now;
-            
-            if ( interval.CompareTo(TimeSpan.Zero) < 0 )
-                interval = interval.Add(TimeSpan.FromDays(1));
+            // var interval = DateTime.Now.Date.Add(ConfigHelper.Config.WakingTimeParsed.TimeOfDay) - DateTime.Now;
+            //
+            // if ( interval.CompareTo(TimeSpan.Zero) < 0 )
+            //     interval = interval.Add(TimeSpan.FromDays(1));
 
-            _timer.Interval = interval.TotalMilliseconds;
+            _timer.Interval = ConfigHelper.Config.WakingIntervalInMinutes * 60000; //in miliseconds
             _timer.Enabled = true;
 
-            Logger.Info($"Next wakeup scheduled after: {interval}");
+            Logger.Info($"Next wakeup scheduled after: {TimeSpan.FromMilliseconds( 3_600_000)}");
         }
 
         private void RequestApi()
         {
-            using ( var httpHandler = new HttpClientHandler() { UseDefaultCredentials = true } )
-            using ( var httpClient = new HttpClient(httpHandler) )
+            foreach (var wakingUrl in ConfigHelper.Config.WakingUrls)
             {
-                for ( var i = 0 ; i < ConfigHelper.Config.TriesCount ; i++ )
-                    try
-                    {
-                        Logger.Info($"Sending request: {ConfigHelper.Config.WakingUrl}");
-                        Console.WriteLine("Request sent");
-                        var response = httpClient.GetAsync(ConfigHelper.Config.WakingUrl).Result;
-                        
-
-                        Logger.Info($"Received response: {response.StatusCode}");
-                        break;
-                    }
-                    catch ( Exception ex )
-                    {
-                        Logger.Error(ex);
-                        if ( i < ConfigHelper.Config.TriesCount - 1 )
+                using ( var httpHandler = new HttpClientHandler() { UseDefaultCredentials = true } )
+                using ( var httpClient = new HttpClient(httpHandler) )
+                {
+                    for ( var i = 0 ; i < ConfigHelper.Config.TriesCount ; i++ )
+                        try
                         {
-                            Logger.Info($"Waiting for retry number {i + 1}");
-                            Thread.Sleep(5000);
+                            Logger.Info($"Sending request: {wakingUrl}");
+                            var response = httpClient.GetAsync(wakingUrl).Result;
+                            Logger.Info($"Received response: {response.StatusCode}");
+                            break;
                         }
-                    }
+                        catch ( Exception ex )
+                        {
+                            Logger.Error(ex);
+                            if ( i < ConfigHelper.Config.TriesCount - 1 )
+                            {
+                                Logger.Info($"Waiting for retry number {i + 1}");
+                                Thread.Sleep(5000);
+                            }
+                        }
+                }
             }
+            
         }
 
         public bool Stop()
